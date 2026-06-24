@@ -4,6 +4,8 @@ A six-game arcade cabinet, built entirely as static HTML/CSS/JS — no build ste
 
 Every game is an original implementation inspired by a classic arcade genre, with its own title and characters rather than reusing trademarked names or assets:
 
+![Cabinet Screen](cabinet.png)
+
 | Game | Genre | Notes |
 |---|---|---|
 | **Brick Blitz** | Brick breaker | 10 hand-built levels, power-ups, combo scoring |
