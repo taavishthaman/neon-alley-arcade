@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PELLET PANIC — Neon Maze Chase</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Mono:wght@400;700&display=swap');
+
+  :root{
+    --bg-deep:#0a0d1a;
+    --bg-panel:#11162c;
+    --cyan:#4cf3ff;
+    --magenta:#ff4cdb;
+    --amber:#ffd23f;
+    --green:#59ff8d;
+    --red:#ff5c6c;
+    --text:#dce6ff;
+    --muted:#7d89b0;
+  }
+
+  *{box-sizing:border-box;}
+
+  html,body{
+    margin:0; padding:0;
+    background:
+      radial-gradient(ellipse at 50% -10%, #1b2350 0%, var(--bg-deep) 55%, #05060c 100%);
+    color:var(--text);
+    font-family:'Space Mono', monospace;
+    min-height:100vh;
+    display:flex; align-items:center; justify-content:center;
+    padding:18px;
+  }
+
+  .arcade-wrap{ width:100%; max-width:520px; margin:0 auto; }
+
+  .hud-bar{
+    display:flex; align-items:center; justify-content:space-between;
+    background:linear-gradient(180deg, var(--bg-panel), #0c1024);
+    border:2px solid #2a3360;
+    border-radius:10px 10px 0 0;
+    padding:10px 16px;
+    box-shadow:0 0 24px rgba(76,243,255,0.08) inset;
+  }
+  .hud-group{display:flex; align-items:center; gap:16px; flex-wrap:wrap;}
+  .hud-label{font-size:9px; color:var(--muted); letter-spacing:1px; margin-bottom:3px;}
+  .hud-value{
+    font-family:'Press Start 2P', monospace; font-size:13px;
+    color:var(--amber); text-shadow:0 0 8px rgba(255,210,63,0.6);
+  }
+  #lives-icons{ display:flex; gap:4px; }
+  .life-icon{ width:14px; height:14px; border-radius:50%; background:var(--amber);
+    clip-path: polygon(100% 50%, 38% 0%, 38% 100%); }
+  #mute-btn{
+    background:none; border:2px solid #2a3360; color:var(--text);
+    border-radius:6px; font-size:16px; width:34px; height:34px; cursor:pointer; line-height:1;
+  }
+  #mute-btn:hover{border-color:var(--cyan);}
+
+  .stage{
+    position:relative; width:100%;
+    border:2px solid #2a3360; border-top:none; border-radius:0 0 10px 10px;
+    overflow:hidden;
+    box-shadow:0 18px 50px -10px rgba(0,0,0,0.6), 0 0 30px rgba(76,243,255,0.05) inset;
+  }
+  canvas{ display:block; width:100%; height:auto; aspect-ratio:19/21; background:#04050c; }
+
+  .stage::after{
+    content:""; position:absolute; inset:0;
+    background:repeating-linear-gradient(to bottom, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 2px, transparent 4px);
+    pointer-events:none; mix-blend-mode:overlay;
+  }
+
+  #overlay{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(6,8,18,0); opacity:0; pointer-events:none; transition:opacity 0.2s ease;
+  }
+  #overlay.visible{ background:rgba(6,8,18,0.72); opacity:1; pointer-events:auto; }
+
+  #overlay-box{
+    text-align:center; padding:28px 32px; max-width:86%;
+    border:2px solid var(--amber); border-radius:12px;
+    background:linear-gradient(180deg, rgba(17,22,44,0.95), rgba(10,13,28,0.95));
+    box-shadow:0 0 40px rgba(255,210,63,0.2), 0 0 80px rgba(255,76,219,0.08);
+  }
+  #overlay-box h1{
+    font-family:'Press Start 2P', monospace; font-size:20px; margin:0 0 14px;
+    color:var(--cyan);
+    text-shadow:2px 2px 0 rgba(255,76,219,0.5), -2px -2px 0 rgba(76,243,255,0.3);
+    letter-spacing:1px;
+  }
+  #overlay-box .sub{ color:var(--text); font-size:12px; margin:0 0 16px; line-height:1.6; }
+  #overlay-box .rules{ color:var(--muted); font-size:10px; line-height:1.9; margin-bottom:18px; text-align:left; display:inline-block; }
+  #overlay-box .rules b{ color:var(--text); }
+
+  .arcade-btn{
+    font-family:'Space Mono', monospace; font-weight:700; font-size:12px; letter-spacing:2px;
+    background:transparent; border:2px solid var(--amber); color:var(--amber);
+    padding:11px 24px; border-radius:8px; cursor:pointer;
+    text-shadow:0 0 6px rgba(255,210,63,0.5); box-shadow:0 0 16px rgba(255,210,63,0.15);
+    transition:all 0.15s ease;
+  }
+  .arcade-btn:hover{ background:var(--amber); color:#1a1400; box-shadow:0 0 26px rgba(255,210,63,0.55); }
+
+  .footnote{ text-align:center; color:var(--muted); font-size:9px; margin-top:10px; letter-spacing:0.5px; }
+
+  .dpad{
+    display:flex; flex-direction:row; gap:6px;
+    justify-content:center; margin:10px auto 0; width:fit-content;
+  }
+  .dpad button{
+    width:44px; height:44px;
+    background:rgba(17,22,44,0.9); border:2px solid #2a3360; border-radius:8px;
+    color:var(--cyan); font-size:16px; cursor:pointer; user-select:none;
+  }
+  .dpad button:active{ background:var(--cyan); color:#06101a; }
+
+  @media (max-width:480px){
+    #overlay-box h1{font-size:15px;}
+    #overlay-box .rules{font-size:9px;}
+    .hud-value{font-size:11px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="arcade-wrap">
+  <div class="hud-bar">
+    <div class="hud-group">
+      <div><div class="hud-label">SCORE</div><div class="hud-value" id="score-val">0</div></div>
+      <div><div class="hud-label">LEVEL</div><div class="hud-value" id="level-val">1</div></div>
+      <div><div class="hud-label">LIVES</div><div id="lives-icons"></div></div>
+    </div>
+    <button id="mute-btn" title="Mute (M)">&#128266;</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="game" width="456" height="504"></canvas>
+    <div id="overlay"><div id="overlay-box"></div></div>
+  </div>
+
+  <div class="footnote">ARROW KEYS / WASD — MOVE &nbsp;•&nbsp; SPACE — START/CONTINUE &nbsp;•&nbsp; P — PAUSE</div>
+
+  <div class="dpad">
+    <button data-dx="-1" data-dy="0">&#9664;</button>
+    <button data-dx="0" data-dy="-1">&#9650;</button>
+    <button data-dx="0" data-dy="1">&#9660;</button>
+    <button data-dx="1" data-dy="0">&#9654;</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ============================================================
+  // MAZE DATA  (hand-designed, validated for full connectivity)
+  // ============================================================
+  const MAZE_ROWS = [
+    '###################',
+    '#o##.##.#.#.##.##o#',
+    '#.##.##.#.#.##.##.#',
+    '...................',
+    '###.##..#.#..##.###',
+    '###.##.......##.###',
+    '#....##.....##....#',
+    '#.##.##.....##.##.#',
+    '#......##D##......#',
+    '#......#   #......#',
+    '#......#   #......#',
+    '#......#   #......#',
+    '#......##D##......#',
+    '#.##.##.....##.##.#',
+    '#....##.....##....#',
+    '###.##.......##.###',
+    '###.##..#.#..##.###',
+    '...................',
+    '#.##.##.#.#.##.##.#',
+    '#o##.##.#.#.##.##o#',
+    '###################'
+  ];
+
+  const COLS = 19, ROWS = 21, CELL = 24;
+  const CANVAS_W = COLS*CELL, CANVAS_H = ROWS*CELL;
+
+  const DOOR_TILE = { col:9, row:8 };
+  const EXIT_TILE  = { col:9, row:7 };
+  const HOUSE_CENTER = { col:9, row:10 };
+  const PLAYER_START = { col:9, row:16 };
+
+  const clamp = (v,lo,hi) => Math.max(lo, Math.min(hi, v));
+  const px = (col) => col*CELL + CELL/2;
+  const py = (row) => row*CELL + CELL/2;
+
+  function cellChar(row, col){
+    const c = ((col % COLS) + COLS) % COLS;
+    if (row < 0 || row >= ROWS) return '#';
+    return MAZE_ROWS[row][c];
+  }
+  function isWallFor(kind, col, row){
+    const ch = cellChar(row, col);
+    if (ch === '#') return true;
+    if (ch === 'D') return kind !== 'ghost';
+    return false;
+  }
+
+  // ============================================================
+  // DOM / CANVAS
+  // ============================================================
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const overlay = document.getElementById('overlay');
+  const overlayBox = document.getElementById('overlay-box');
+  const scoreEl = document.getElementById('score-val');
+  const levelEl = document.getElementById('level-val');
+  const livesIconsEl = document.getElementById('lives-icons');
+  const muteBtn = document.getElementById('mute-btn');
+
+  // ============================================================
+  // AUDIO
+  // ============================================================
+  let audioCtx = null, audioEnabled = true;
+  function ensureAudio(){
+    if (!audioCtx){
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch(e){ audioEnabled = false; return; }
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  }
+  function beep(freq, dur, type, vol){
+    if (!audioEnabled || !audioCtx) return;
+    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.type = type || 'square'; osc.frequency.value = freq; gain.gain.value = vol != null ? vol : 0.05;
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    const now = audioCtx.currentTime;
+    osc.start(now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now+dur);
+    osc.stop(now+dur+0.02);
+  }
+  function playSound(name){
+    if (!audioEnabled) return;
+    switch(name){
+      case 'pellet': beep(520, 0.04, 'square', 0.03); break;
+      case 'powerPellet': beep(220, 0.16, 'sawtooth', 0.05); break;
+      case 'eatGhost': beep(740, 0.12, 'sine', 0.06); setTimeout(()=>beep(980,0.1,'sine',0.05),60); break;
+      case 'death':
+        beep(300,0.18,'sawtooth',0.06);
+        setTimeout(()=>beep(220,0.18,'sawtooth',0.06),150);
+        setTimeout(()=>beep(140,0.3,'sawtooth',0.06),300);
+        break;
+      case 'levelup':
+        beep(523,0.12,'sine',0.06); setTimeout(()=>beep(659,0.12,'sine',0.06),100);
+        setTimeout(()=>beep(784,0.12,'sine',0.06),200); setTimeout(()=>beep(1046,0.2,'sine',0.07),300);
+        break;
+      case 'gameover': beep(180,0.4,'sawtooth',0.06); break;
+      case 'fruit': beep(880,0.1,'triangle',0.05); break;
+      case 'extralife': beep(660,0.1,'sine',0.06); setTimeout(()=>beep(880,0.15,'sine',0.06),100); break;
+    }
+  }
+  muteBtn.addEventListener('click', () => {
+    audioEnabled = !audioEnabled;
+    muteBtn.innerHTML = audioEnabled ? '&#128266;' : '&#128263;';
+  });
+
+  // ============================================================
+  // GHOST DEFINITIONS (original characters)
+  // ============================================================
+  const GHOST_DEFS = [
+    { name:'Razor',   color:'#ff4d5e', corner:{col:17,row:1},  spawn:{col:9,row:9},   releaseDelay:0,     personality:'chase'  },
+    { name:'Glimmer', color:'#ff8ad1', corner:{col:1,row:1},   spawn:{col:8,row:10},  releaseDelay:4000,  personality:'ambush' },
+    { name:'Wisp',    color:'#5be9ff', corner:{col:17,row:19}, spawn:{col:10,row:10}, releaseDelay:8000,  personality:'flank'  },
+    { name:'Mooch',   color:'#ffb454', corner:{col:1,row:19},  spawn:{col:9,row:11},  releaseDelay:12000, personality:'shy'    }
+  ];
+
+  const FRUIT_TILE = { col:9, row:14 };
+
+  // ============================================================
+  // GAME STATE
+  // ============================================================
+  let state = 'start'; // start, ready, playing, paused, dying, levelComplete, gameOver
+  let level = 1, score = 0, lives = 3;
+  let extraLifeAwarded = false;
+  let pelletState = [];
+  let totalPellets = 0, remainingPellets = 0, pelletsEaten = 0;
+  let fruitSpawnedFlags = [false, false];
+  let fruit = null;
+  let comboMultiplier = 1;
+  let particles = [], floatingTexts = [];
+  let readyTimer = 0, dyingTimer = 0;
+  let globalMode = 'scatter';
+  let modeScheduleIdx = 0, modeTimer = 0, modeSchedule = [];
+  let player = null;
+  let ghosts = [];
+  let keys = {};
+
+  function buildModeSchedule(lvl){
+    const scatter = Math.max(7000 - (lvl-1)*600, 2000);
+    return [
+      { mode:'scatter', dur:scatter },
+      { mode:'chase',   dur:20000 },
+      { mode:'scatter', dur:Math.max(scatter-1000,1500) },
+      { mode:'chase',   dur:20000 },
+      { mode:'scatter', dur:Math.max(scatter-2000,1000) },
+      { mode:'chase',   dur:999999 }
+    ];
+  }
+
+  function playerSpeed(){ return 2.3 + Math.min((level-1)*0.04, 0.5); }
+  function ghostBaseSpeed(){ return 1.78 + Math.min((level-1)*0.03, 0.45); }
+  function frightSpeed(){ return 1.25; }
+  function eatenSpeed(){ return 3.4; }
+  function frightDuration(){ return Math.max(8000 - (level-1)*500, 2200); }
+
+  function setState(s){
+    state = s;
+    updateOverlay();
+    updateHUD();
+  }
+
+  function updateHUD(){
+    scoreEl.textContent = score;
+    levelEl.textContent = level;
+    livesIconsEl.innerHTML = '';
+    for (let i=0;i<Math.max(lives,0);i++){
+      const d = document.createElement('div');
+      d.className = 'life-icon';
+      livesIconsEl.appendChild(d);
+    }
+  }
+
+  function initPellets(){
+    pelletState = [];
+    totalPellets = 0;
+    for (let r=0;r<ROWS;r++){
+      const row = [];
+      for (let c=0;c<COLS;c++){
+        const ch = MAZE_ROWS[r][c];
+        const v = ch === '.' ? 1 : (ch === 'o' ? 2 : 0);
+        row.push(v);
+        if (v>0) totalPellets++;
+      }
+      pelletState.push(row);
+    }
+    remainingPellets = totalPellets;
+    pelletsEaten = 0;
+    fruitSpawnedFlags = [false,false];
+    fruit = null;
+  }
+
+  function makePlayer(){
+    return {
+      x: px(PLAYER_START.col), y: py(PLAYER_START.row),
+      dir: {dx:0,dy:0}, nextDir:{dx:0,dy:0},
+      tileCol: null, tileRow: null,
+      mouthT: 0, speed: playerSpeed()
+    };
+  }
+
+  function makeGhosts(){
+    return GHOST_DEFS.map(def => ({
+      def,
+      x: px(def.spawn.col), y: py(def.spawn.row),
+      dir: {dx: (Math.random()<0.5?-1:1), dy:0},
+      tileCol: null, tileRow: null,
+      state: def.releaseDelay===0 ? 'exiting' : 'house',
+      mode: 'scatter',
+      releaseTimer: def.releaseDelay,
+      bobPhase: Math.random()*Math.PI*2
+    }));
+  }
+
+  function resetPositions(){
+    player = makePlayer();
+    ghosts = makeGhosts();
+    comboMultiplier = 1;
+    modeScheduleIdx = 0;
+    modeSchedule = buildModeSchedule(level);
+    globalMode = modeSchedule[0].mode;
+    modeTimer = modeSchedule[0].dur;
+    ghosts.forEach(g => g.mode = globalMode);
+  }
+
+  function setupLevel(n){
+    level = n;
+    initPellets();
+    resetPositions();
+    particles = []; floatingTexts = [];
+  }
+
+  function startGame(){
+    level = 1; score = 0; lives = 3; extraLifeAwarded = false;
+    setupLevel(1);
+    setState('ready');
+    readyTimer = 1700;
+  }
+  function restartGame(){ startGame(); }
+
+  function goToNextLevel(){
+    level++;
+    setupLevel(level);
+    setState('ready');
+    readyTimer = 1700;
+  }
+
+  function triggerDeath(){
+    state = 'dying';
+    dyingTimer = 1100;
+    player.dir = {dx:0,dy:0};
+    playSound('death');
+    updateOverlay();
+  }
+
+  function afterDeath(){
+    lives--;
+    updateHUD();
+    if (lives <= 0){
+      setState('gameOver');
+      playSound('gameover');
+    } else {
+      resetPositions();
+      setState('ready');
+      readyTimer = 1500;
+    }
+  }
+
+  // ============================================================
+  // INPUT
+  // ============================================================
+  function setDesiredDir(dx,dy){
+    if (state === 'start') { startGame(); return; }
+    if (state === 'ready' || state === 'playing'){
+      player.nextDir = {dx,dy};
+    }
+  }
+
+  function handlePrimaryAction(){
+    ensureAudio();
+    if (state === 'start') startGame();
+    else if (state === 'levelComplete') goToNextLevel();
+    else if (state === 'gameOver') restartGame();
+    else if (state === 'paused') setState('playing');
+  }
+
+  function togglePause(){
+    if (state === 'playing'){ setState('paused'); }
+    else if (state === 'paused'){ setState('playing'); }
+  }
+
+  window.addEventListener('keydown', (e) => {
+    keys[e.code] = true;
+    ensureAudio();
+    if (e.code === 'Space'){ e.preventDefault(); handlePrimaryAction(); }
+    if (e.code === 'KeyP'){ togglePause(); }
+    if (e.code === 'KeyM'){ audioEnabled = !audioEnabled; muteBtn.innerHTML = audioEnabled ? '&#128266;' : '&#128263;'; }
+    if (e.code === 'ArrowUp' || e.code === 'KeyW'){ setDesiredDir(0,-1); }
+    if (e.code === 'ArrowDown' || e.code === 'KeyS'){ setDesiredDir(0,1); }
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA'){ setDesiredDir(-1,0); }
+    if (e.code === 'ArrowRight' || e.code === 'KeyD'){ setDesiredDir(1,0); }
+  });
+  window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+  document.querySelectorAll('.dpad button').forEach(btn => {
+    const dx = parseInt(btn.getAttribute('data-dx'),10);
+    const dy = parseInt(btn.getAttribute('data-dy'),10);
+    btn.addEventListener('click', (e) => { e.preventDefault(); ensureAudio(); setDesiredDir(dx,dy); });
+  });
+
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) handlePrimaryAction(); });
+
+  // ============================================================
+  // OVERLAY
+  // ============================================================
+  function updateOverlay(){
+    if (state === 'start'){
+      overlay.classList.add('visible');
+      overlayBox.innerHTML =
+        '<h1>PELLET PANIC</h1>' +
+        '<p class="sub">A Neon Maze Chase</p>' +
+        '<div class="rules">' +
+          '<b>Arrows / WASD / D-pad</b> — move<br>' +
+          '<b>Space</b> — start / continue<br>' +
+          '<b>P</b> — pause &nbsp;•&nbsp; <b>M</b> — mute<br><br>' +
+          'Clear every dot to advance.<br>Power pellets turn ghosts edible — for a bit.' +
+        '</div>' +
+        '<button class="arcade-btn">START GAME</button>';
+    } else if (state === 'paused'){
+      overlay.classList.add('visible');
+      overlayBox.innerHTML = '<h1>PAUSED</h1><button class="arcade-btn">RESUME</button>';
+    } else if (state === 'levelComplete'){
+      overlay.classList.add('visible');
+      overlayBox.innerHTML =
+        '<h1>LEVEL ' + level + ' CLEAR!</h1>' +
+        '<p class="sub">Score: ' + score + '</p>' +
+        '<button class="arcade-btn">NEXT LEVEL</button>';
+    } else if (state === 'gameOver'){
+      overlay.classList.add('visible');
+      overlayBox.innerHTML =
+        '<h1>GAME OVER</h1>' +
+        '<p class="sub">Final Score: ' + score + ' &mdash; reached Level ' + level + '</p>' +
+        '<button class="arcade-btn">TRY AGAIN</button>';
+    } else {
+      overlay.classList.remove('visible');
+      overlayBox.innerHTML = '';
+      return;
+    }
+    const btn = overlayBox.querySelector('button');
+    if (btn) btn.addEventListener('click', handlePrimaryAction);
+  }
+
+  // ============================================================
+  // MOVEMENT / AI
+  // ============================================================
+  function personalityTarget(ghost){
+    const pc = { col: Math.floor(player.x/CELL), row: Math.floor(player.y/CELL) };
+    switch(ghost.def.personality){
+      case 'chase': return pc;
+      case 'ambush': {
+        const d = player.dir.dx || player.dir.dy ? player.dir : {dx:0,dy:-1};
+        return { col: pc.col + d.dx*4, row: pc.row + d.dy*4 };
+      }
+      case 'flank': {
+        const razor = ghosts.find(g => g.def.name === 'Razor');
+        const rc = razor ? { col: Math.floor(razor.x/CELL), row: Math.floor(razor.y/CELL) } : pc;
+        return { col: pc.col + (pc.col - rc.col), row: pc.row + (pc.row - rc.row) };
+      }
+      case 'shy': {
+        const gcol = Math.floor(ghost.x/CELL), grow = Math.floor(ghost.y/CELL);
+        const dist = Math.hypot(pc.col-gcol, pc.row-grow);
+        return dist > 8 ? pc : ghost.def.corner;
+      }
+      default: return pc;
+    }
+  }
+
+  function ghostTarget(ghost){
+    if (ghost.state === 'exiting') return EXIT_TILE;
+    if (ghost.mode === 'eaten') return DOOR_TILE;
+    if (ghost.mode === 'frightened') return null;
+    if (ghost.mode === 'scatter') return ghost.def.corner;
+    return personalityTarget(ghost);
+  }
+
+  function stepGhost(ghost, dtFrames){
+    if (ghost.state === 'house'){
+      ghost.releaseTimer -= dtFrames*16.6667;
+      ghost.bobPhase += dtFrames*0.15;
+      ghost.y = py(HOUSE_CENTER.row) + Math.sin(ghost.bobPhase)*3;
+      if (ghost.releaseTimer <= 0){
+        ghost.state = 'exiting';
+        ghost.x = px(HOUSE_CENTER.col);
+        ghost.y = py(HOUSE_CENTER.row);
+        ghost.dir = {dx:0,dy:-1};
+        ghost.tileCol = null; ghost.tileRow = null;
+      }
+      return;
+    }
+
+    const speed = ghost.mode === 'frightened' ? frightSpeed() : (ghost.mode === 'eaten' ? eatenSpeed() : ghostBaseSpeed());
+
+    ghost.x += ghost.dir.dx*speed*dtFrames;
+    ghost.y += ghost.dir.dy*speed*dtFrames;
+    if (ghost.x < -CELL/2) ghost.x += COLS*CELL;
+    if (ghost.x > COLS*CELL + CELL/2) ghost.x -= COLS*CELL;
+
+    const col = Math.floor(ghost.x/CELL), row = Math.floor(ghost.y/CELL);
+    if (ghost.tileCol === col && ghost.tileRow === row) return;
+    ghost.tileCol = col; ghost.tileRow = row;
+    ghost.x = px(col); ghost.y = py(row);
+
+    if (ghost.state === 'exiting' && col === EXIT_TILE.col && row === EXIT_TILE.row){
+      ghost.state = 'active';
+      ghost.mode = globalMode;
+    }
+    if (ghost.state === 'active' && ghost.mode === 'eaten' && col === DOOR_TILE.col && row === DOOR_TILE.row){
+      ghost.state = 'house';
+      ghost.releaseTimer = 1800;
+      ghost.x = px(HOUSE_CENTER.col);
+      ghost.y = py(HOUSE_CENTER.row);
+      return;
+    }
+
+    const target = ghostTarget(ghost);
+    const reverse = { dx:-ghost.dir.dx, dy:-ghost.dir.dy };
+    const opts = [{dx:0,dy:-1},{dx:0,dy:1},{dx:-1,dy:0},{dx:1,dy:0}];
+    const valid = opts.filter(d => !isWallFor('ghost', col+d.dx, row+d.dy));
+    const nonReverse = valid.filter(d => !(d.dx===reverse.dx && d.dy===reverse.dy));
+    const pool = nonReverse.length ? nonReverse : valid;
+
+    let chosen;
+    if (!pool.length){
+      chosen = ghost.dir;
+    } else if (target === null){
+      chosen = pool[Math.floor(Math.random()*pool.length)];
+    } else {
+      let best = pool[0], bestD = Infinity;
+      pool.forEach(d => {
+        const ncol = col+d.dx, nrow = row+d.dy;
+        const dd = (target.col-ncol)*(target.col-ncol) + (target.row-nrow)*(target.row-nrow);
+        if (dd < bestD){ bestD = dd; best = d; }
+      });
+      chosen = best;
+    }
+    ghost.dir = chosen;
+  }
+
+  function stepPlayer(dtFrames){
+    const speed = playerSpeed();
+    player.x += player.dir.dx*speed*dtFrames;
+    player.y += player.dir.dy*speed*dtFrames;
+    if (player.x < -CELL/2) player.x += COLS*CELL;
+    if (player.x > COLS*CELL + CELL/2) player.x -= COLS*CELL;
+
+    const col = Math.floor(player.x/CELL), row = Math.floor(player.y/CELL);
+    const stopped = !player.dir.dx && !player.dir.dy;
+    if (player.tileCol !== col || player.tileRow !== row || stopped){
+      player.tileCol = col; player.tileRow = row;
+      player.x = px(col); player.y = py(row);
+      const nd = player.nextDir;
+      if ((nd.dx || nd.dy) && !isWallFor('player', col+nd.dx, row+nd.dy)){
+        player.dir = nd;
+      } else if (isWallFor('player', col+player.dir.dx, row+player.dir.dy)){
+        player.dir = {dx:0,dy:0};
+      }
+    }
+
+    if (player.dir.dx || player.dir.dy) player.mouthT += dtFrames*0.32;
+  }
+
+  function updateGlobalMode(dtMs){
+    if (modeScheduleIdx >= modeSchedule.length-1 && modeSchedule[modeSchedule.length-1].dur > 500000) return;
+    modeTimer -= dtMs;
+    if (modeTimer <= 0){
+      modeScheduleIdx = Math.min(modeScheduleIdx+1, modeSchedule.length-1);
+      globalMode = modeSchedule[modeScheduleIdx].mode;
+      modeTimer = modeSchedule[modeScheduleIdx].dur;
+      ghosts.forEach(g => {
+        if (g.state === 'active' && g.mode !== 'frightened' && g.mode !== 'eaten'){
+          g.mode = globalMode;
+          g.dir = { dx:-g.dir.dx, dy:-g.dir.dy };
+        }
+      });
+    }
+  }
+
+  function triggerFrightened(){
+    comboMultiplier = 1;
+    const dur = frightDuration();
+    ghosts.forEach(g => {
+      if (g.state === 'active' && g.mode !== 'eaten'){
+        g.mode = 'frightened';
+        g.frightTimeLeft = dur;
+        g.dir = { dx:-g.dir.dx, dy:-g.dir.dy };
+      }
+    });
+  }
+
+  function updateFrightened(dtMs){
+    ghosts.forEach(g => {
+      if (g.mode === 'frightened'){
+        g.frightTimeLeft -= dtMs;
+        if (g.frightTimeLeft <= 0) g.mode = globalMode;
+      }
+    });
+  }
+
+  function checkPelletEat(){
+    const col = Math.floor(player.x/CELL), row = Math.floor(player.y/CELL);
+    if (pelletState[row] && pelletState[row][col] > 0){
+      const wasPower = pelletState[row][col] === 2;
+      pelletState[row][col] = 0;
+      remainingPellets--; pelletsEaten++;
+      score += wasPower ? 50 : 10;
+      spawnParticles(px(col), py(row), wasPower ? '#ffd23f' : '#fff7d6', wasPower ? 10 : 4);
+      playSound(wasPower ? 'powerPellet' : 'pellet');
+      if (wasPower) triggerFrightened();
+      checkExtraLife();
+      updateHUD();
+      maybeSpawnFruit();
+      checkLevelClear();
+    }
+  }
+
+  function checkExtraLife(){
+    if (!extraLifeAwarded && score >= 10000){
+      extraLifeAwarded = true;
+      lives = Math.min(lives+1, 9);
+      spawnFloatingText(px(PLAYER_START.col), py(PLAYER_START.row)-10, 'EXTRA LIFE', '#59ff8d');
+      playSound('extralife');
+      updateHUD();
+    }
+  }
+
+  function maybeSpawnFruit(){
+    const ratio = pelletsEaten/totalPellets;
+    if (!fruitSpawnedFlags[0] && ratio >= 0.3){
+      fruitSpawnedFlags[0] = true;
+      fruit = { x:px(FRUIT_TILE.col), y:py(FRUIT_TILE.row), timer:9000, value:100+level*50 };
+    } else if (!fruitSpawnedFlags[1] && ratio >= 0.65){
+      fruitSpawnedFlags[1] = true;
+      fruit = { x:px(FRUIT_TILE.col), y:py(FRUIT_TILE.row), timer:9000, value:200+level*50 };
+    }
+  }
+
+  function updateFruit(dtMs){
+    if (!fruit) return;
+    fruit.timer -= dtMs;
+    if (fruit.timer <= 0){ fruit = null; return; }
+    const dist = Math.hypot(player.x-fruit.x, player.y-fruit.y);
+    if (dist < CELL*0.55){
+      score += fruit.value;
+      spawnFloatingText(fruit.x, fruit.y-6, '+'+fruit.value, '#ff8ad1');
+      playSound('fruit');
+      updateHUD();
+      checkExtraLife();
+      fruit = null;
+    }
+  }
+
+  function checkLevelClear(){
+    if (remainingPellets <= 0){
+      setState('levelComplete');
+      playSound('levelup');
+    }
+  }
+
+  function checkCollisions(){
+    for (const g of ghosts){
+      if (g.state !== 'active') continue;
+      const dist = Math.hypot(player.x-g.x, player.y-g.y);
+      if (dist < CELL*0.62){
+        if (g.mode === 'frightened'){
+          g.mode = 'eaten';
+          const pts = 200*comboMultiplier;
+          score += pts;
+          comboMultiplier = Math.min(comboMultiplier*2, 8);
+          spawnFloatingText(g.x, g.y-8, '+'+pts, '#ffffff');
+          spawnParticles(g.x, g.y, g.def.color, 12);
+          playSound('eatGhost');
+          updateHUD();
+        } else if (g.mode !== 'eaten'){
+          triggerDeath();
+          return;
+        }
+      }
+    }
+  }
+
+  function spawnParticles(x,y,color,count){
+    if (particles.length > 220) return;
+    for (let i=0;i<count;i++){
+      particles.push({ x,y, vx:(Math.random()-0.5)*3.6, vy:(Math.random()-0.5)*3.6-0.6, life:1, color, size:Math.random()*3+1.6 });
+    }
+  }
+  function spawnFloatingText(x,y,text,color){ floatingTexts.push({x,y,text,color,life:1}); }
+
+  function updateFX(dtFrames){
+    for (let i=particles.length-1;i>=0;i--){
+      const p = particles[i];
+      p.x += p.vx*dtFrames; p.y += p.vy*dtFrames; p.vy += 0.05*dtFrames; p.life -= 0.045*dtFrames;
+      if (p.life <= 0) particles.splice(i,1);
+    }
+    for (let i=floatingTexts.length-1;i>=0;i--){
+      const f = floatingTexts[i];
+      f.y -= 0.5*dtFrames; f.life -= 0.016*dtFrames;
+      if (f.life <= 0) floatingTexts.splice(i,1);
+    }
+  }
+
+  // ============================================================
+  // RENDER
+  // ============================================================
+  function roundRect(x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+  function drawBackground(){
+    const grad = ctx.createRadialGradient(CANVAS_W/2, CANVAS_H*0.25, 40, CANVAS_W/2, CANVAS_H*0.5, CANVAS_H*0.9);
+    grad.addColorStop(0, '#0e1330');
+    grad.addColorStop(1, '#04050c');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
+  }
+
+  function drawMaze(now){
+    for (let r=0;r<ROWS;r++){
+      for (let c=0;c<COLS;c++){
+        const ch = MAZE_ROWS[r][c];
+        const x = c*CELL, y = r*CELL;
+        if (ch === '#'){
+          ctx.save();
+          ctx.shadowColor = '#3a6cff';
+          ctx.shadowBlur = 6;
+          roundRect(x+2,y+2,CELL-4,CELL-4,5);
+          ctx.fillStyle = '#1c2a6b';
+          ctx.fill();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = '#4f7bff';
+          ctx.stroke();
+          ctx.restore();
+        } else if (ch === 'D'){
+          ctx.fillStyle = '#ff8ad1';
+          ctx.shadowColor = '#ff8ad1';
+          ctx.shadowBlur = 6;
+          ctx.fillRect(x+3, y+CELL/2-2, CELL-6, 4);
+          ctx.shadowBlur = 0;
+        }
+      }
+    }
+    for (let r=0;r<ROWS;r++){
+      for (let c=0;c<COLS;c++){
+        const v = pelletState[r][c];
+        if (v === 1){
+          ctx.fillStyle = '#ffe9c2';
+          ctx.beginPath();
+          ctx.arc(px(c), py(r), 2.4, 0, Math.PI*2);
+          ctx.fill();
+        } else if (v === 2){
+          const pulse = 0.6+0.4*Math.sin(now*0.006);
+          ctx.save();
+          ctx.shadowColor = '#ffd23f';
+          ctx.shadowBlur = 10*pulse;
+          ctx.fillStyle = '#ffd23f';
+          ctx.beginPath();
+          ctx.arc(px(c), py(r), 5.5, 0, Math.PI*2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+    }
+  }
+
+  function drawFruit(){
+    if (!fruit) return;
+    ctx.save();
+    ctx.shadowColor = '#ff5c6c';
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = '#ff5c6c';
+    ctx.beginPath(); ctx.arc(fruit.x-5, fruit.y+3, 7, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(fruit.x+6, fruit.y+5, 7, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#59ff8d'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(fruit.x, fruit.y-2); ctx.lineTo(fruit.x+2, fruit.y-12); ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawPlayer(){
+    const dir = (player.dir.dx || player.dir.dy) ? player.dir : {dx:1,dy:0};
+    const angle = Math.atan2(dir.dy, dir.dx);
+    const mouthOpen = Math.abs(Math.sin(player.mouthT))*0.42 + 0.06;
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    ctx.rotate(angle);
+    ctx.shadowColor = '#ffd23f';
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = '#ffd93d';
+    ctx.beginPath();
+    ctx.arc(0,0, CELL*0.42, mouthOpen*Math.PI, (2-mouthOpen)*Math.PI);
+    ctx.lineTo(0,0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawGhostBody(g, color){
+    const r = CELL*0.42;
+    const x = g.x, y = g.y;
+    ctx.beginPath();
+    ctx.moveTo(x-r, y+r*0.6);
+    ctx.arc(x, y, r, Math.PI, 0, false);
+    ctx.lineTo(x+r, y+r*0.6);
+    const waves = 4;
+    for (let i=0;i<waves;i++){
+      const wx = x+r - (i+0.5)*(2*r/waves);
+      const wy = y+r*0.6 + (i%2===0 ? r*0.32 : 0);
+      ctx.lineTo(wx, wy);
+    }
+    ctx.lineTo(x-r, y+r*0.6);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  function drawGhost(g, now){
+    if (g.state === 'house' || g.state === 'exiting'){
+      drawGhostBody(g, g.def.color);
+      drawEyes(g, false);
+      return;
+    }
+    if (g.mode === 'eaten'){
+      drawEyes(g, false);
+      return;
+    }
+    let color = g.def.color;
+    let scaredFace = false;
+    if (g.mode === 'frightened'){
+      scaredFace = true;
+      const flashing = g.frightTimeLeft < 2000 && Math.floor(now/200)%2===0;
+      color = flashing ? '#dfe7ff' : '#2233aa';
+    }
+    ctx.save();
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 7;
+    drawGhostBody(g, color);
+    ctx.restore();
+    if (scaredFace){
+      ctx.strokeStyle = '#dfe7ff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      const r = CELL*0.42;
+      for (let i=-2;i<=2;i++){
+        const wx = g.x + i*r*0.22;
+        const wy = g.y + r*0.08 + (Math.abs(i)%2===0?2:-2);
+        if (i===-2) ctx.moveTo(wx,wy); else ctx.lineTo(wx,wy);
+      }
+      ctx.stroke();
+      ctx.fillStyle = '#dfe7ff';
+      ctx.beginPath(); ctx.arc(g.x-6,g.y-4,2,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(g.x+6,g.y-4,2,0,Math.PI*2); ctx.fill();
+    } else {
+      drawEyes(g, true);
+    }
+  }
+
+  function drawEyes(g, withPupilOffset){
+    const dx = g.dir.dx, dy = g.dir.dy;
+    const ex = 5.5, ey = -3;
+    [-1,1].forEach(side => {
+      const cx = g.x + side*ex, cy = g.y + ey;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.ellipse(cx, cy, 3.6, 4.4, 0, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#23315a';
+      const pdx = withPupilOffset ? dx*1.6 : 0;
+      const pdy = withPupilOffset ? dy*1.6 : 0;
+      ctx.beginPath(); ctx.arc(cx+pdx, cy+pdy, 1.7, 0, Math.PI*2); ctx.fill();
+    });
+  }
+
+  function render(now){
+    drawBackground();
+    drawMaze(now);
+    drawFruit();
+
+    particles.forEach(p => {
+      ctx.globalAlpha = Math.max(p.life,0);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x-p.size/2, p.y-p.size/2, p.size, p.size);
+    });
+    ctx.globalAlpha = 1;
+
+    ghosts.forEach(g => drawGhost(g, now));
+    if (state !== 'dying') drawPlayer();
+
+    floatingTexts.forEach(f => {
+      ctx.globalAlpha = Math.max(f.life,0);
+      ctx.font = 'bold 11px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = f.color;
+      ctx.shadowColor = f.color; ctx.shadowBlur = 6;
+      ctx.fillText(f.text, f.x, f.y);
+    });
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+
+    if (state === 'ready'){
+      ctx.font = 'bold 16px "Press Start 2P", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffd23f';
+      ctx.shadowColor = '#ffd23f'; ctx.shadowBlur = 8;
+      ctx.fillText('READY!', CANVAS_W/2, py(PLAYER_START.row)+34);
+      ctx.shadowBlur = 0;
+    }
+
+    if (state === 'paused'){
+      ctx.fillStyle = 'rgba(4,5,12,0.4)';
+      ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
+    }
+  }
+
+  // ============================================================
+  // MAIN LOOP
+  // ============================================================
+  let lastTime = performance.now();
+
+  function loop(now){
+    const msDelta = Math.min(now-lastTime, 42);
+    const dtFrames = msDelta/16.6667;
+    lastTime = now;
+
+    if (state === 'ready'){
+      readyTimer -= msDelta;
+      if (readyTimer <= 0) setState('playing');
+    } else if (state === 'playing'){
+      stepPlayer(dtFrames);
+      ghosts.forEach(g => stepGhost(g, dtFrames));
+      checkPelletEat();
+      checkCollisions();
+      updateGlobalMode(msDelta);
+      updateFrightened(msDelta);
+      updateFruit(msDelta);
+      updateFX(dtFrames);
+    } else if (state === 'dying'){
+      dyingTimer -= msDelta;
+      updateFX(dtFrames);
+      if (dyingTimer <= 0) afterDeath();
+    }
+
+    render(now);
+    requestAnimationFrame(loop);
+  }
+
+  // ============================================================
+  // INIT
+  // ============================================================
+  function init(){
+    setupLevel(1);
+    state = 'start';
+    updateOverlay();
+    updateHUD();
+    requestAnimationFrame(loop);
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
